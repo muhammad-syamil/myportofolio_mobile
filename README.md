@@ -51,3 +51,9 @@ samples, guidance on mobile development, and a full API reference.
 #### Penggunaan AI
 
 Saya menggunakan Codex untuk membantu menyusun kode Flutter, terutama ketika terjadinya error yang tidak saya pahami, saya menggunakan codex untuk solve error tsb.
+
+### Tutorial 9
+
+Mengikuti [Tutorial 09 PBP](https://pbp.cs.ui.ac.id/tutorial/tutorial-9.html), aplikasi sekarang memiliki drawer untuk berpindah antara Home dan Add Project. Tombol Tambah Proyek pada menu utama juga membuka formulir proyek. Formulir berisi nama, deskripsi, kategori, teknologi, dan tautan proyek; nama serta deskripsi wajib diisi. Setelah Save, dialog menampilkan ringkasan isian dan tombol OK mengosongkan formulir. Pada tahap tutorial ini, data proyek hanya ditampilkan di dialog.
+
+Berkas halaman berada di `lib/screens/`, sedangkan drawer dan kartu menu berada di `lib/widgets/`. Implementasi dan pemeriksaan kode Tutorial 9 dibantu oleh Codex.
