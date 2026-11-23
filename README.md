@@ -1,20 +1,17 @@
 # myportofolio_mobile
 
-A new Flutter project.
+Aplikasi portofolio mobile Muhammad Syamil untuk mata kuliah Pemrograman Berbasis Platform. Saat ini aplikasi memiliki menu utama, formulir proyek, dan formulir pengalaman. Kedua formulir menampilkan ringkasan input di dialog; penyimpanan ke server belum termasuk pada tahap ini.
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+Pasang Flutter SDK, lalu dari direktori utama jalankan:
 
-A few resources to get you started if this is your first Flutter project:
+```sh
+flutter pub get
+flutter run -d chrome
+```
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Buka formulir melalui kartu pada halaman utama atau drawer. Untuk memeriksa kode dan perilaku widget, jalankan `flutter analyze` dan `flutter test`.
 
 ### Tugas 7
 
@@ -57,3 +54,14 @@ Saya menggunakan Codex untuk membantu menyusun kode Flutter, terutama ketika ter
 Mengikuti [Tutorial 09 PBP](https://pbp.cs.ui.ac.id/tutorial/tutorial-9.html), aplikasi sekarang memiliki drawer untuk berpindah antara Home dan Add Project. Tombol Tambah Proyek pada menu utama juga membuka formulir proyek. Formulir berisi nama, deskripsi, kategori, teknologi, dan tautan proyek; nama serta deskripsi wajib diisi. Setelah Save, dialog menampilkan ringkasan isian dan tombol OK mengosongkan formulir. Pada tahap tutorial ini, data proyek hanya ditampilkan di dialog.
 
 Berkas halaman berada di `lib/screens/`, sedangkan drawer dan kartu menu berada di `lib/widgets/`. Implementasi dan pemeriksaan kode Tutorial 9 dibantu oleh Codex.
+
+### Tugas 8
+
+1. `Navigator.push()` menumpuk halaman baru di atas halaman saat ini sehingga tombol kembali dapat kembali ke halaman sebelumnya. `Navigator.pushReplacement()` mengganti halaman saat ini dalam riwayat navigasi. `Navigator.pop()` menutup halaman atau dialog paling atas. Kartu Tambah Pengalaman memakai `push()` agar pengguna bisa kembali ke menu dengan tombol kembali. Opsi Home pada drawer memakai `pushReplacement()` untuk membuka halaman utama saat berada di formulir.
+2. `Scaffold` menyediakan kerangka yang sama untuk `AppBar`, `Drawer`, dan isi halaman. Drawer yang sama dipakai di halaman utama dan kedua formulir. Warna `Theme.of(context).colorScheme.primary` dipakai pada AppBar halaman utama dan formulir Pengalaman agar tampilannya konsisten.
+3. Formulir Pengalaman memakai `SingleChildScrollView` yang berisi `Column` agar kolom dan tombol Simpan dapat digulir pada layar sempit atau saat papan ketik tampil. `SizedBox` memberi jarak tetap antarkolom supaya label, pesan validasi, dan tombol tidak saling menempel.
+4. `GlobalKey<FormState>` memberi akses ke state formulir. Saat Simpan ditekan, `validate()` menjalankan setiap `validator` dan dialog hanya muncul jika semuanya valid. Judul yang hanya berisi spasi ditolak, begitu pula URL thumbnail seperti `alamat-tidak-valid`. Memilih papan ketik URL tidak menjamin pengguna memasukkan URL yang benar, sehingga pemeriksaan nilai tetap diperlukan.
+
+Formulir Pengalaman mengikuti field `Experience` pada portofolio web: judul (`title`, maksimal 255 karakter), deskripsi, kategori dari pilihan model, dan URL thumbnail opsional. Input yang lolos validasi ditampilkan dalam dialog, lalu formulir dikosongkan setelah OK.
+
+**Penggunaan AI:** Membantu nge spot eror

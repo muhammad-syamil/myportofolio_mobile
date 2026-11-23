@@ -8,11 +8,14 @@ class MyHomePage extends StatelessWidget {
   static const items = [
     ItemHomepage('Lihat Proyek', Icons.folder, Colors.blue),
     ItemHomepage('Tambah Proyek', Icons.add_circle, Colors.green),
+    ItemHomepage('Tambah Pengalaman', Icons.work_outline, Colors.deepPurple),
     ItemHomepage('Logout', Icons.logout, Colors.red),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final isNarrow = MediaQuery.sizeOf(context).width < 420;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -49,7 +52,8 @@ class MyHomePage extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,
-            crossAxisCount: 3,
+            crossAxisCount: isNarrow ? 2 : 3,
+            childAspectRatio: isNarrow ? 0.85 : 1.2,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             children: items.map((item) => ItemCard(item)).toList(),
