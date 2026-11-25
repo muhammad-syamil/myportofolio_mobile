@@ -1,6 +1,34 @@
 # myportofolio_mobile
 
-Aplikasi portofolio mobile Muhammad Syamil untuk mata kuliah Pemrograman Berbasis Platform. Saat ini aplikasi memiliki menu utama, formulir proyek, dan formulir pengalaman. Kedua formulir menampilkan ringkasan input di dialog; penyimpanan ke server belum termasuk pada tahap ini.
+Aplikasi portofolio mobile Muhammad Syamil untuk mata kuliah Pemrograman Berbasis Platform. Daftar dan formulir proyek kini terhubung ke API Django; formulir pengalaman masih menampilkan ringkasan input secara lokal.
+
+## Tutorial 10: Integrasi API
+
+Aplikasi Flutter sekarang mengambil daftar proyek publik dari Django REST Framework, menampilkan detailnya, dan mengirim proyek baru menggunakan token autentikasi. Token hanya disimpan di memori selama aplikasi berjalan. Model JSON dihasilkan dengan `json_serializable`; berkas `*.g.dart` dibuat ulang saat build dan tidak disimpan di Git.
+
+Siapkan dependensi dan generator sebelum menjalankan aplikasi:
+
+```sh
+flutter pub get
+dart run build_runner build
+```
+
+Gunakan URL backend sesuai perangkat:
+
+```sh
+# Emulator Android (default): http://10.0.2.2:8000
+flutter run
+
+# Chrome dengan Django lokal
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8000
+
+# Backend yang sudah di-deploy
+flutter run --dart-define=API_BASE_URL=https://domain-backend.example
+```
+
+Backend Django yang digunakan harus menyediakan `GET/POST /api/v1/projects/`, `POST /api/v1/auth/token/`, dan `POST /api/v1/auth/logout/`. Skema proyek yang dipakai aplikasi adalah `id`, `title`, `description`, `tech_stack`, `project_url`, dan `project_image_url`. Aktifkan `rest_framework.authtoken`, `TokenAuthentication`, migrasi token, dan CORS untuk Flutter Web pada repositori Django. Tambahkan `10.0.2.2` ke `ALLOWED_HOSTS` untuk emulator Android. Repositori Django berada di luar folder ini, sehingga konfigurasi server perlu dikerjakan di sana sebelum pengujian end-to-end.
+
+Workflow `.github/workflows/main.yaml` menjalankan analisis, tes, generator JSON, dan build APK. Untuk APK yang terhubung ke backend deploy, isi variabel repositori GitHub Actions `API_BASE_URL` dengan URL HTTPS backend tanpa `/` di akhir. Jika variabel tidak diisi, APK menggunakan URL emulator lokal bawaan.
 
 ## Getting Started
 
@@ -8,7 +36,7 @@ Pasang Flutter SDK, lalu dari direktori utama jalankan:
 
 ```sh
 flutter pub get
-flutter run -d chrome
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8000
 ```
 
 Buka formulir melalui kartu pada halaman utama atau drawer. Untuk memeriksa kode dan perilaku widget, jalankan `flutter analyze` dan `flutter test`.

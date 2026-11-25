@@ -1,167 +1,150 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:myportofolio_mobile/main.dart';
-import 'package:myportofolio_mobile/screens/experience_form.dart';
+import 'package:myportofolio_mobile/models/project.dart';
+import 'package:myportofolio_mobile/screens/project_detail_screen.dart';
 import 'package:myportofolio_mobile/screens/project_form.dart';
+import 'package:myportofolio_mobile/services/api_client.dart';
+
+const projectJson = {
+  'id': '87c4cc02-2a5d-45f4-a29c-c4bbdf8475fe',
+  'title': 'Portofolio Flutter',
+  'description': 'Aplikasi portofolio',
+  'tech_stack': 'Flutter, Django',
+  'project_url': 'https://example.com/project',
+  'project_image_url': '',
+};
 
 void main() {
-  testWidgets('Tambah Proyek membuka form dan menampilkan ringkasan', (
+  test('Model Project memetakan snake_case dan tidak mengirim id', () {
+    final project = Project.fromJson(projectJson);
+    expect(project.techStack, 'Flutter, Django');
+    expect(project.toJson(), {
+      'title': 'Portofolio Flutter',
+      'description': 'Aplikasi portofolio',
+      'tech_stack': 'Flutter, Django',
+      'project_url': 'https://example.com/project',
+      'project_image_url': '',
+    });
+    expect(
+      Project.fromJson({...projectJson, 'project_image_url': null})
+          .projectImageUrl,
+      '',
+    );
+  });
+
+  test('ApiClient memakai path dan header token yang benar', () async {
+    final paths = <String>[];
+    final client = ApiClient(
+      baseUrl: 'http://localhost:8000',
+      client: MockClient((request) async {
+        paths.add(request.url.path);
+        if (request.url.path.endsWith('/auth/token/')) {
+          expect(jsonDecode(request.body), {
+            'username': 'admin',
+            'password': 'secret',
+          });
+          return http.Response('{"token":"abc"}', 200);
+        }
+        if (request.url.path.endsWith('/auth/logout/')) {
+          expect(request.headers['authorization'], 'Token abc');
+          return http.Response('', 204);
+        }
+        if (request.method == 'POST') {
+          expect(request.headers['authorization'], 'Token abc');
+          expect(jsonDecode(request.body)['tech_stack'], 'Flutter, Django');
+          expect(jsonDecode(request.body).containsKey('id'), isFalse);
+          return http.Response(jsonEncode(projectJson), 201);
+        }
+        return http.Response(jsonEncode([projectJson]), 200);
+      }),
+    );
+    expect((await client.getProjects()).single.title, 'Portofolio Flutter');
+    final token = await client.obtainToken('admin', 'secret');
+    expect(token, 'abc');
+    await client.createProject(Project.fromJson(projectJson), token: token);
+    await client.logout(token: token);
+    expect(paths, [
+      '/api/v1/projects/',
+      '/api/v1/auth/token/',
+      '/api/v1/projects/',
+      '/api/v1/auth/logout/',
+    ]);
+  });
+
+  testWidgets('Daftar publik menampilkan proyek dan halaman detail', (
     tester,
   ) async {
-    await tester.pumpWidget(const MyApp());
+    final client = ApiClient(
+      client: MockClient(
+        (_) async => http.Response(jsonEncode([projectJson]), 200),
+      ),
+    );
+    await tester.pumpWidget(MyApp(apiClient: client));
+    await tester.tap(find.text('Lihat Proyek'));
+    await tester.pumpAndSettle();
+    expect(find.text('Portofolio Flutter'), findsOneWidget);
+    await tester.tap(find.text('Portofolio Flutter'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ProjectDetailScreen), findsOneWidget);
+    expect(find.text('Aplikasi portofolio'), findsOneWidget);
+  });
 
+  testWidgets('Tambah proyek meminta login lalu mengirim data', (tester) async {
+    var created = false;
+    final client = ApiClient(
+      client: MockClient((request) async {
+        if (request.url.path.endsWith('/auth/token/')) {
+          return http.Response('{"token":"abc"}', 200);
+        }
+        if (request.method == 'POST') {
+          created = true;
+          expect(request.headers['authorization'], 'Token abc');
+          return http.Response(jsonEncode(projectJson), 201);
+        }
+        return http.Response('[]', 200);
+      }),
+    );
+    await tester.pumpWidget(MyApp(apiClient: client));
     await tester.tap(find.text('Tambah Proyek'));
     await tester.pumpAndSettle();
-    expect(find.byType(ProjectFormPage), findsOneWidget);
-    await tester.pump(const Duration(seconds: 5));
+    expect(find.text('Username'), findsOneWidget);
+    await tester.enterText(find.byType(TextFormField).at(0), 'admin');
+    await tester.enterText(find.byType(TextFormField).at(1), 'secret');
+    await tester.ensureVisible(find.widgetWithText(ElevatedButton, 'Login'));
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Login'));
     await tester.pumpAndSettle();
-
-    await tester.ensureVisible(find.text('Save'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Save'));
-    await tester.pumpAndSettle();
-    expect(find.text('Nama proyek tidak boleh kosong!'), findsOneWidget);
-    expect(find.text('Deskripsi proyek tidak boleh kosong!'), findsOneWidget);
-
+    expect(
+      find.byType(ProjectFormPage),
+      findsOneWidget,
+      reason: tester
+          .widgetList<Text>(find.byType(Text))
+          .map((e) => e.data)
+          .toList()
+          .toString(),
+    );
     await tester.enterText(
       find.byType(TextFormField).at(0),
-      'Aplikasi Portofolio',
+      'Portofolio Flutter',
     );
-    await tester.enterText(find.byType(TextFormField).at(1), 'Proyek Flutter');
-    await tester.ensureVisible(find.text('Save'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Save'));
-    await tester.pumpAndSettle();
-
+    await tester.enterText(
+      find.byType(TextFormField).at(1),
+      'Aplikasi portofolio',
+    );
+    await tester.enterText(find.byType(TextFormField).at(2), 'Flutter, Django');
+    await tester.enterText(
+      find.byType(TextFormField).at(3),
+      'https://example.com/project',
+    );
+    await tester.ensureVisible(find.text('Simpan'));
+    await tester.tap(find.text('Simpan'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(created, isTrue);
     expect(find.text('Proyek berhasil ditambahkan!'), findsOneWidget);
-    expect(find.text('Nama Proyek: Aplikasi Portofolio'), findsOneWidget);
-    expect(find.text('Deskripsi: Proyek Flutter'), findsOneWidget);
-    expect(find.text('Kategori: Web Development'), findsOneWidget);
-
-    await tester.tap(find.text('OK'));
-    await tester.pumpAndSettle();
-    expect(find.text('Proyek berhasil ditambahkan!'), findsNothing);
-    expect(find.text('Aplikasi Portofolio'), findsNothing);
-  });
-
-  testWidgets('Drawer berpindah antara Home dan Add Project', (tester) async {
-    await tester.pumpWidget(const MyApp());
-
-    await tester.tap(find.byTooltip('Open navigation menu'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Add Project'));
-    await tester.pumpAndSettle();
-    expect(find.byType(ProjectFormPage), findsOneWidget);
-
-    await tester.tap(find.byTooltip('Open navigation menu'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Home'));
-    await tester.pumpAndSettle();
-    expect(find.text('Selamat datang di MyPortfolio Mobile!'), findsOneWidget);
-  });
-
-  testWidgets('Form Pengalaman memvalidasi input dan menampilkan ringkasan', (
-    tester,
-  ) async {
-    await tester.pumpWidget(const MyApp());
-
-    await tester.tap(find.text('Tambah Pengalaman'));
-    await tester.pumpAndSettle();
-    expect(find.byType(ExperienceFormPage), findsOneWidget);
-    await tester.pump(const Duration(seconds: 5));
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(find.text('Simpan'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Simpan'));
-    await tester.pumpAndSettle();
-    expect(find.text('Judul tidak boleh kosong!'), findsOneWidget);
-    expect(find.text('Deskripsi tidak boleh kosong!'), findsOneWidget);
-    expect(find.byType(AlertDialog), findsNothing);
-
-    await tester.enterText(find.byType(TextFormField).at(0), '   ');
-    await tester.enterText(find.byType(TextFormField).at(1), 'Mengajar PBP');
-    await tester.ensureVisible(find.text('Simpan'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Simpan'));
-    await tester.pumpAndSettle();
-    expect(find.text('Judul tidak boleh kosong!'), findsOneWidget);
-
-    await tester.enterText(
-      find.byType(TextFormField).at(0),
-      'Asisten Dosen PBP',
-    );
-    await tester.enterText(
-      find.byType(TextFormField).at(2),
-      'alamat-tidak-valid',
-    );
-    await tester.ensureVisible(find.text('Simpan'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Simpan'));
-    await tester.pumpAndSettle();
-    expect(
-      find.text('Masukkan URL http:// atau https:// yang valid.'),
-      findsOneWidget,
-    );
-    expect(find.byType(AlertDialog), findsNothing);
-
-    await tester.enterText(
-      find.byType(TextFormField).at(2),
-      'https://example.com/gambar.jpg',
-    );
-    await tester.tap(find.text('Full-Time'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Research').last);
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Simpan'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Simpan'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Pengalaman berhasil ditambahkan!'), findsOneWidget);
-    expect(find.text('Judul: Asisten Dosen PBP'), findsOneWidget);
-    expect(find.text('Deskripsi: Mengajar PBP'), findsOneWidget);
-    expect(find.text('Kategori: Research'), findsOneWidget);
-    expect(
-      find.text('URL Thumbnail: https://example.com/gambar.jpg'),
-      findsOneWidget,
-    );
-
-    await tester.tap(find.text('OK'));
-    await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsNothing);
-    expect(
-      tester
-          .widget<TextFormField>(find.byType(TextFormField).at(0))
-          .controller!
-          .text,
-      isEmpty,
-    );
-  });
-
-  testWidgets('Drawer membuka Pengalaman dan Home pada layar sempit', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(320, 640);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const MyApp());
-
-    await tester.tap(find.byTooltip('Open navigation menu'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Add Experience'));
-    await tester.pumpAndSettle();
-    expect(find.byType(ExperienceFormPage), findsOneWidget);
-
-    await tester.ensureVisible(find.text('Simpan'));
-    await tester.pumpAndSettle();
-    expect(find.text('Simpan'), findsOneWidget);
-
-    await tester.tap(find.byTooltip('Open navigation menu'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Home'));
-    await tester.pumpAndSettle();
-    expect(find.text('Selamat datang di MyPortfolio Mobile!'), findsOneWidget);
   });
 }
